@@ -42,6 +42,11 @@ const categories = [
   { name: 'Bags & carry', count: '16 products', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=900&q=85' }
 ];
 
+const slugify = (value) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+products.forEach(product => {
+  if (!product.slug) product.slug = slugify(product.name);
+});
+
 function App() {
   const routerNavigate = useNavigate();
   const [view, setView] = useState('home');
@@ -142,7 +147,7 @@ function RoutedHeader() {
   const submitSearch = (event) => {
     if (event.key === 'Enter' && query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   };
-  return <header className="header"><button className="logo" onClick={() => navigate('/')}>NEXORA<span>.</span></button><nav className="nav routed-nav"><Link to="/">Home</Link><Link to="/shop">Shop</Link><Link to="/shop?sort=newest">New arrivals</Link><Link to="/about">About</Link></nav><div className="header-actions"><div className="search-wrap"><label className="search"><Search size={18} /><input value={query} onFocus={() => setFocused(true)} onChange={event => setQuery(event.target.value)} onKeyDown={submitSearch} placeholder="Search products" /><kbd>⌘ K</kbd></label>{focused && query.trim() && <div className="search-suggestions">{suggestions.length ? suggestions.map(product => <button key={product.id} onMouseDown={() => navigate(`/product/${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`)}><img src={product.image} alt="" /><span>{product.name}<small>${product.price}</small></span></button>) : <p>No matching objects found.</p>}<Link to={`/search?q=${encodeURIComponent(query)}`} onMouseDown={() => setFocused(false)}>View all results <ArrowRight size={13} /></Link></div>}</div><button className="icon-btn" aria-label="Account" onClick={() => navigate('/account')}><UserRound size={18} /></button><button className="icon-btn" aria-label="Wishlist" onClick={() => navigate('/wishlist')}><Heart size={19} /><i>{wishlist.length}</i></button><button className="icon-btn" aria-label="Cart" onClick={() => navigate('/cart')}><ShoppingBag size={19} /><i>{cartCount}</i></button></div></header>;
+  return <header className="header"><button className="logo" onClick={() => navigate('/')}>NEXORA<span>.</span></button><nav className="nav routed-nav"><Link to="/">Home</Link><Link to="/shop">Shop</Link><Link to="/shop?sort=newest">New arrivals</Link><Link to="/about">About</Link></nav><div className="header-actions"><div className="search-wrap"><label className="search"><Search size={18} /><input value={query} onFocus={() => setFocused(true)} onChange={event => setQuery(event.target.value)} onKeyDown={submitSearch} placeholder="Search products" /><kbd>⌘ K</kbd></label>{focused && query.trim() && <div className="search-suggestions">{suggestions.length ? suggestions.map(product => <button key={product.id} onMouseDown={() => navigate(`/product/${product.slug}`)}><img src={product.image} alt="" /><span>{product.name}<small>${product.price}</small></span></button>) : <p>No matching objects found.</p>}<Link to={`/search?q=${encodeURIComponent(query)}`} onMouseDown={() => setFocused(false)}>View all results <ArrowRight size={13} /></Link></div>}</div><button className="icon-btn" aria-label="Account" onClick={() => navigate('/account')}><UserRound size={18} /></button><button className="icon-btn" aria-label="Wishlist" onClick={() => navigate('/wishlist')}><Heart size={19} /><i>{wishlist.length}</i></button><button className="icon-btn" aria-label="Cart" onClick={() => navigate('/cart')}><ShoppingBag size={19} /><i>{cartCount}</i></button></div></header>;
 }
 
 function RoutedFooter() {
@@ -181,7 +186,7 @@ function ProductTile({ product }) {
   const [wished, setWished] = useState(() => JSON.parse(localStorage.getItem('nexora-wishlist') || '[]').includes(product.id));
   const add = () => { const cart = readCart(); const found = cart.find(item => item.id === product.id); saveCart(found ? cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item) : [...cart, { ...product, qty: 1 }]); };
   const toggle = () => { const list = JSON.parse(localStorage.getItem('nexora-wishlist') || '[]'); const next = list.includes(product.id) ? list.filter(id => id !== product.id) : [...list, product.id]; localStorage.setItem('nexora-wishlist', JSON.stringify(next)); setWished(!wished); };
-  return <article className="product-card"><div className="product-image" onClick={() => navigate(`/product/${product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`)}><img src={product.image} alt={product.name} /><span className="product-tag">{product.tag}</span><button className={`wish ${wished ? 'wished' : ''}`} onClick={event => { event.stopPropagation(); toggle(); }}><Heart size={17} fill={wished ? 'currentColor' : 'none'} /></button><button className="quick-add" onClick={event => { event.stopPropagation(); add(); }}>Quick add <Plus size={15} /></button></div><div className="product-meta"><div><p>{product.category}</p><h3>{product.name}</h3></div><div className="rating"><Star size={12} fill="currentColor" /> {product.rating} <span>({product.reviews})</span></div></div><div className="price"><strong>${product.price}</strong><del>${product.compare}</del><span>-{Math.round((1 - product.price / product.compare) * 100)}%</span></div></article>;
+  return <article className="product-card"><div className="product-image" onClick={() => navigate(`/product/${product.slug}`)}><img src={product.image} alt={product.name} /><span className="product-tag">{product.tag}</span><button className={`wish ${wished ? 'wished' : ''}`} onClick={event => { event.stopPropagation(); toggle(); }}><Heart size={17} fill={wished ? 'currentColor' : 'none'} /></button><button className="quick-add" onClick={event => { event.stopPropagation(); add(); }}>Quick add <Plus size={15} /></button></div><div className="product-meta"><div><p>{product.category}</p><h3>{product.name}</h3></div><div className="rating"><Star size={12} fill="currentColor" /> {product.rating} <span>({product.reviews})</span></div></div><div className="price"><strong>${product.price}</strong><del>${product.compare}</del><span>-{Math.round((1 - product.price / product.compare) * 100)}%</span></div></article>;
 }
 
 function ListingPage({ forcedCategory }) {
@@ -201,7 +206,7 @@ function ListingPage({ forcedCategory }) {
 function ProductPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const product = products.find(item => (item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) === slug);
+  const product = products.find(item => item.slug === slug);
   const [image, setImage] = useState(product?.image);
   const [qty, setQty] = useState(1);
   const [color, setColor] = useState(product?.colors?.[0] || '#202020');
